@@ -1,0 +1,59 @@
+{
+  "name": "pixelcrush",
+  "version": "0.1.0",
+  "description": "Pixelates an image to a grid and reduces it to a few colours: pure functions on RGBA pixels, and helpers for a browser image or canvas.",
+  "license": "MIT",
+  "author": "Thomas Eyermann",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theiereman/pixelcrush.git"
+  },
+  "bugs": {
+    "url": "https://github.com/theiereman/pixelcrush/issues"
+  },
+  "homepage": "https://github.com/theiereman/pixelcrush#readme",
+  "keywords": [
+    "pixel-art",
+    "pixelate",
+    "pixelation",
+    "image",
+    "canvas",
+    "downscale",
+    "median-cut",
+    "palette",
+    "quantize",
+    "color-reduction"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=20"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "smoke": "node scripts/smoke.mjs",
+    "prepublishOnly": "npm run typecheck && npm test && npm run build && npm run smoke"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,0 +1,1 @@
+`before-after.png` is the illustration of the main README. The picture is the Mona Lisa by Leonardo da Vinci (public domain), as retouched by the C2RMF, from Wikimedia Commons. The right-hand side is the output of `filter(source, { width: 64, height: 80, colors: 16 })` on a 620 × 775 crop, scaled five times with nearest-neighbour sampling.

@@ -1,0 +1,77 @@
+name: Release
+
+# Releases the version in package.json: on the push of its tag v<version>, or
+# from the Actions tab (Run workflow, on main), which creates and pushes that
+# tag itself. Either way: the checks, the GitHub release with the changelog
+# entry and the tarball attached, and, once the repository variable
+# PUBLISH_TO_NPM is "true", the npm publish through trusted publishing (OpenID
+# Connect, no token; npm 11.5.1 or later), which attaches provenance by itself.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: GitHub release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - run: npm run smoke
+      - name: The version in package.json
+        id: version
+        run: echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: A pushed tag must match it
+        if: github.ref_type == 'tag'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: test "$GITHUB_REF_NAME" = "$TAG" || { echo "tag $GITHUB_REF_NAME but package.json says ${TAG#v}"; exit 1; }
+      - name: A manual run tags the commit
+        if: github.ref_type != 'tag'
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "pixelcrush ${TAG#v}"
+          git push origin "$TAG"
+      - run: npm pack
+      - name: Release notes, from the CHANGELOG entry
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          awk -v version="${TAG#v}" '/^## /{found = ($2 == version); next} found' CHANGELOG.md > notes.md
+          test -s notes.md || { echo "no entry for ${TAG#v} in CHANGELOG.md"; exit 1; }
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: gh release create "$TAG" --title "$TAG" --notes-file notes.md pixelcrush-*.tgz
+
+  publish:
+    name: npm publish
+    needs: release
+    if: vars.PUBLISH_TO_NPM == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false # no cache in a release build
+      - run: npm install -g npm@latest
+      - run: npm ci
+      - run: npm publish
