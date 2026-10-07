@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+- Published from GitHub Actions through npm trusted publishing, with provenance. The package itself is unchanged.
+
 ## 0.2.0
 
 - `pixelate` and `cropRegion` take an options object, like `filter`: `pixelate(pixels, { width, height, crop, anchor })`.
