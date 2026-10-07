@@ -9,7 +9,15 @@ export type Crop = "cover" | "none"
  */
 export type Anchor = { x?: number; y?: number }
 
-export type PixelateOptions = { crop?: Crop; anchor?: Anchor }
+/** `"binary"` (the default) makes every pixel opaque or transparent; `"keep"` keeps the averaged alpha. */
+export type Alpha = "binary" | "keep"
+
+/** The target size, in pixels. With one side only, the other follows the source's ratio. */
+export type TargetSize = { width: number; height?: number } | { width?: number; height: number }
+
+export type CropOptions = TargetSize & { crop?: Crop; anchor?: Anchor }
+
+export type PixelateOptions = CropOptions & { alpha?: Alpha }
 
 /** A rectangle of the source, in source pixels (not rounded). */
 export type Region = { x: number; y: number; width: number; height: number }
@@ -18,14 +26,18 @@ export type Region = { x: number; y: number; width: number; height: number }
 type Tap = { index: number; weight: number }
 
 /**
- * Resizes `source` to `width × height`. Each target pixel is the area-weighted
+ * Resizes `source` to the target size. Each target pixel is the area-weighted
  * mean of the source pixels it covers, with RGB weighted by alpha. On an axis
  * where the source is smaller than the target, the covering pixel is used.
- * Alpha is then made binary: 128 or more becomes 255, less becomes 0 (RGB 0).
+ * Alpha is then made binary unless `alpha` is `"keep"`: 128 or more becomes
+ * 255, less becomes 0 (RGB 0).
  */
-export function pixelate(source: Pixels, width: number, height: number, options: PixelateOptions = {}): Pixels {
+export function pixelate(source: Pixels, options: PixelateOptions): Pixels {
   assertPixels(source)
-  const region = cropRegion(source.width, source.height, width, height, options)
+  const { alpha: alphaMode = "binary" } = options
+  if (alphaMode !== "binary" && alphaMode !== "keep") throw new RangeError(`alpha must be "binary" or "keep", got ${String(alphaMode)}`)
+  const { width, height } = targetSize(source.width, source.height, options)
+  const region = cropRegion(source.width, source.height, options)
   const columns = taps(source.width, region.x, region.width, width)
   const rows = taps(source.height, region.y, region.height, height)
 
@@ -51,11 +63,12 @@ export function pixelate(source: Pixels, width: number, height: number, options:
         }
       }
       const offset = (y * width + x) * 4
-      if (Math.round(alpha / total) >= 128) {
+      const meanAlpha = Math.round(alpha / total)
+      if (alphaMode === "keep" ? meanAlpha > 0 : meanAlpha >= 128) {
         output[offset] = Math.round(red / alpha)
         output[offset + 1] = Math.round(green / alpha)
         output[offset + 2] = Math.round(blue / alpha)
-        output[offset + 3] = 255
+        output[offset + 3] = alphaMode === "keep" ? meanAlpha : 255
       }
     }
   }
@@ -63,23 +76,17 @@ export function pixelate(source: Pixels, width: number, height: number, options:
 }
 
 /**
- * The part of a `sourceWidth × sourceHeight` image that a `width × height`
- * target shows. `"cover"` keeps the largest region of the target's ratio,
- * placed by `anchor`; `"none"` keeps the whole source. Used by `pixelate` and
- * by the browser's downscale.
+ * The part of a `sourceWidth × sourceHeight` image that the target shows.
+ * `"cover"` keeps the largest region of the target's ratio, placed by
+ * `anchor`; `"none"` keeps the whole source.
  */
-export function cropRegion(
-  sourceWidth: number,
-  sourceHeight: number,
-  width: number,
-  height: number,
-  { crop = "cover", anchor = {} }: PixelateOptions = {},
-): Region {
+export function cropRegion(sourceWidth: number, sourceHeight: number, options: CropOptions): Region {
   assertSize("source width", sourceWidth)
   assertSize("source height", sourceHeight)
-  assertSize("width", width)
-  assertSize("height", height)
+  const { width, height } = targetSize(sourceWidth, sourceHeight, options)
+  const { crop = "cover", anchor = {} } = options
   if (crop !== "cover" && crop !== "none") throw new RangeError(`crop must be "cover" or "none", got ${String(crop)}`)
+  if (typeof anchor !== "object" || anchor === null) throw new RangeError(`anchor must be { x, y }, got ${String(anchor)}`)
   const { x: anchorX = 0.5, y: anchorY = 0.5 } = anchor
   assertAnchor("anchor.x", anchorX)
   assertAnchor("anchor.y", anchorY)
@@ -92,6 +99,16 @@ export function cropRegion(
   }
   const regionHeight = sourceWidth / targetRatio
   return { x: 0, y: (sourceHeight - regionHeight) * anchorY, width: sourceWidth, height: regionHeight }
+}
+
+/** The target size in full: a missing side follows the source's ratio. */
+export function targetSize(sourceWidth: number, sourceHeight: number, { width, height }: TargetSize): { width: number; height: number } {
+  if (width !== undefined) assertSize("width", width)
+  if (height !== undefined) assertSize("height", height)
+  if (width !== undefined && height !== undefined) return { width, height }
+  if (width !== undefined) return { width, height: Math.max(1, Math.round((width * sourceHeight) / sourceWidth)) }
+  if (height !== undefined) return { width: Math.max(1, Math.round((height * sourceWidth) / sourceHeight)), height }
+  throw new RangeError("width or height is required")
 }
 
 /** For each of `count` target cells, the source indices it covers along one axis. */

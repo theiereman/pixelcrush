@@ -1,6 +1,5 @@
-export type { CreateSurface, DrawContext, Surface } from "./downscale"
 export { filter, type FilterOptions } from "./filter"
-export { drawPixels, pixelateImage, sourceSize, type CanvasElement, type CanvasTarget, type ImageElement, type ImageSource, type PixelateImageOptions, type ReadContext } from "./image"
-export { cropRegion, pixelate, type Anchor, type Crop, type PixelateOptions, type Region } from "./pixelate"
+export { drawPixels, pixelateImage, readPixels, sourceSize, type CanvasTarget, type ImageSource } from "./image"
+export { cropRegion, pixelate, type Alpha, type Anchor, type Crop, type CropOptions, type PixelateOptions, type Region, type TargetSize } from "./pixelate"
 export type { Color, Pixels } from "./pixels"
 export { applyPalette, buildPalette, quantize, type Quantized } from "./quantize"

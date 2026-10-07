@@ -1,48 +1,41 @@
 import type { Pixels } from "../src/index"
 
-/** Something a fake context can draw from. */
-type Drawable = { width: number; height: number; pixels: Pixels }
+/** Something a fake context can draw from: it holds its pixels. */
+export type Drawable = { pixels: Pixels }
 
 export class FakeImageData {
-  constructor(readonly data: Uint8ClampedArray<ArrayBuffer>, readonly width: number, readonly height: number) {}
+  constructor(readonly data: Uint8ClampedArray, readonly width: number, readonly height: number) {}
 }
 
-export type DrawCall = { source: unknown; args: number[] }
+/** A scratch canvas, standing in for `OffscreenCanvas`, whose `drawImage` copies the source's pixels. */
+export class FakeCanvas {
+  static made: FakeCanvas[] = []
+  readonly context = new FakeContext(this)
+  options: unknown
+  pixels: Pixels = { width: 0, height: 0, data: new Uint8ClampedArray(0) }
 
-/** A scratch canvas whose `drawImage` samples the nearest source pixel. */
-export class FakeSurface implements Drawable {
-  readonly canvas = this
-  readonly context: FakeContext
-  pixels: Pixels
+  constructor(public width: number, public height: number) {
+    FakeCanvas.made.push(this)
+  }
 
-  constructor(readonly width: number, readonly height: number) {
-    this.pixels = { width, height, data: new Uint8ClampedArray(width * height * 4) }
-    this.context = new FakeContext(this)
+  getContext(type: string, options?: unknown): FakeContext | null {
+    this.options = options
+    return type === "2d" ? this.context : null
   }
 }
 
 export class FakeContext {
-  imageSmoothingEnabled = false
-  imageSmoothingQuality = "low"
-  readonly draws: DrawCall[] = []
+  readonly draws: { source: unknown; args: number[] }[] = []
 
-  constructor(readonly surface: FakeSurface) {}
+  constructor(readonly canvas: FakeCanvas) {}
 
-  drawImage(source: Drawable, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void {
-    this.draws.push({ source, args: [sx, sy, sw, sh, dx, dy, dw, dh] })
-    const target = this.surface.pixels
-    for (let y = 0; y < dh; y++) {
-      for (let x = 0; x < dw; x++) {
-        const fromX = Math.min(source.width - 1, Math.floor(sx + ((x + 0.5) * sw) / dw))
-        const fromY = Math.min(source.height - 1, Math.floor(sy + ((y + 0.5) * sh) / dh))
-        const from = (fromY * source.width + fromX) * 4
-        target.data.set(source.pixels.data.subarray(from, from + 4), ((dy + y) * target.width + dx + x) * 4)
-      }
-    }
+  drawImage(source: Drawable, dx: number, dy: number): void {
+    this.draws.push({ source, args: [dx, dy] })
+    this.canvas.pixels = { width: this.canvas.width, height: this.canvas.height, data: new Uint8ClampedArray(source.pixels.data) }
   }
 
   getImageData(x: number, y: number, width: number, height: number): FakeImageData {
-    if (x !== 0 || y !== 0 || width !== this.surface.width || height !== this.surface.height) throw new Error("partial read")
-    return new FakeImageData(new Uint8ClampedArray(this.surface.pixels.data), width, height)
+    if (x !== 0 || y !== 0 || width !== this.canvas.width || height !== this.canvas.height) throw new Error("partial read")
+    return new FakeImageData(new Uint8ClampedArray(this.canvas.pixels.data), width, height)
   }
 }

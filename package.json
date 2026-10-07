@@ -1,6 +1,6 @@
 {
   "name": "pixelcrush",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Pixelates an image to a grid and reduces it to a few colours: pure functions on RGBA pixels, and helpers for a browser image or canvas.",
   "license": "MIT",
   "author": "Thomas Eyermann",

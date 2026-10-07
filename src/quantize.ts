@@ -37,13 +37,12 @@ export function buildPalette(pixels: Pixels, colors = DEFAULT_COLORS): Color[] {
 /**
  * `pixels` with every pixel that is not fully transparent taking the nearest
  * colour of `palette` (and keeping its alpha); pixels of alpha 0 are copied
- * unchanged. Used to draw every size of an image with the palette computed once.
+ * unchanged, so the empty palette of a fully transparent image is fine. Used
+ * to draw every size of an image with the palette computed once.
  */
 export function applyPalette(pixels: Pixels, palette: Color[]): Pixels {
   assertPixels(pixels)
-  if (palette.length < 1 || palette.length > 256) {
-    throw new RangeError(`palette must hold 1 to 256 colours, got ${palette.length}`)
-  }
+  if (palette.length > 256) throw new RangeError(`palette must hold at most 256 colours, got ${palette.length}`)
   return { width: pixels.width, height: pixels.height, data: remap(pixels.data, palette) }
 }
 
@@ -131,11 +130,12 @@ function mean({ entries, population }: Box): Color {
   return [Math.round(sums[0] / population), Math.round(sums[1] / population), Math.round(sums[2] / population)]
 }
 
-function remap(data: Uint8ClampedArray, palette: Color[]): Uint8ClampedArray<ArrayBuffer> {
+function remap(data: Uint8ClampedArray, palette: Color[]): Uint8ClampedArray {
   const output = new Uint8ClampedArray(data)
   const nearestByKey = new Map<number, number>()
   for (let offset = 0; offset < output.length; offset += 4) {
     if (output[offset + 3] === 0) continue
+    if (palette.length === 0) throw new RangeError("palette is empty, but a pixel is not transparent")
     const key = (output[offset] << 16) | (output[offset + 1] << 8) | output[offset + 2]
     let index = nearestByKey.get(key)
     if (index === undefined) {

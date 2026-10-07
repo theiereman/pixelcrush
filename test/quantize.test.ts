@@ -115,8 +115,13 @@ describe("buildPalette and applyPalette", () => {
     expect(toPixels(applyPalette(other, palette))).toEqual([[200, 40, 40, 200], [20, 60, 220, 255], [1, 2, 3, 0]])
   })
 
-  it("refuse an empty or oversized palette", () => {
+  it("take the empty palette of a fully transparent image, and refuse it for any other", () => {
+    const transparent = fromPixels(1, 1, [[1, 2, 3, 0]])
+    expect(toPixels(applyPalette(transparent, buildPalette(transparent)))).toEqual([[1, 2, 3, 0]])
     expect(() => applyPalette(fromPixels(1, 1, [A]), [])).toThrow(RangeError)
+  })
+
+  it("refuse a palette of more than 256 colours", () => {
     expect(() => applyPalette(fromPixels(1, 1, [A]), Array(257).fill([0, 0, 0]))).toThrow(RangeError)
   })
 })

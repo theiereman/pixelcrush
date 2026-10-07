@@ -16,7 +16,7 @@ for (const name of readdirSync(dist).filter((file) => /\.(js|d\.ts)$/.test(file)
 }
 
 const api = await import("pixelcrush")
-for (const name of ["applyPalette", "buildPalette", "cropRegion", "drawPixels", "filter", "pixelate", "pixelateImage", "quantize", "sourceSize"]) {
+for (const name of ["applyPalette", "buildPalette", "cropRegion", "drawPixels", "filter", "pixelate", "pixelateImage", "quantize", "readPixels", "sourceSize"]) {
   assert.equal(typeof api[name], "function", `${name} is not exported`)
 }
 
@@ -29,6 +29,7 @@ const second = api.filter(source, { width: 2, height: 2, colors: 2 })
 assert.deepEqual([first.pixels.width, first.pixels.height, first.pixels.data.length], [2, 2, 16])
 assert.equal(first.palette.length, 2)
 assert.deepEqual(first, second)
-assert.deepEqual(api.cropRegion(300, 600, 2, 3, { anchor: { y: 1 } }), { x: 0, y: 150, width: 300, height: 450 })
+assert.deepEqual(api.cropRegion(300, 600, { width: 2, height: 3, anchor: { y: 1 } }), { x: 0, y: 150, width: 300, height: 450 })
+assert.deepEqual([api.filter(source, { width: 2 }).pixels.height, api.pixelate(source, { height: 1 }).width], [2, 1])
 
 console.log("smoke test passed: the built package imports and runs")

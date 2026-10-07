@@ -2,7 +2,7 @@
 export type Pixels = {
   width: number
   height: number
-  data: Uint8ClampedArray<ArrayBuffer>
+  data: Uint8ClampedArray
 }
 
 /** A palette colour, `[red, green, blue]`. */
